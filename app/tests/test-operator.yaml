@@ -1,0 +1,32 @@
+---
+# Source: stackgres-operator/templates/tests/test-operator.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "stackgres-operator-test-connection"
+  labels:
+    app: "stackgres-operator"
+    group: helm-tests
+  annotations:
+    "helm.sh/hook": test
+spec:
+  serviceAccountName: stackgres-operator
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  containers:
+    - name: conn-check
+      image: 'quay.io/ongres/kubectl:v1.25.9-build-6.22'
+      imagePullPolicy: "IfNotPresent"
+      command:
+        - "bash"
+        - "-xe"
+        - "-c"
+        - |
+          POD_NAME=$(kubectl get pod -n stackgres -o name | grep -v stackgres-operator-test-connection | grep stackgres-operator)
+          POD_IP=$(kubectl get ${POD_NAME} -n stackgres -o jsonpath="{ .status.podIP }")
+          curl -v ${POD_IP}:8080/q/health/live

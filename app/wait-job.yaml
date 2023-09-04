@@ -1,0 +1,41 @@
+---
+# Source: stackgres-operator/templates/wait-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "stackgres-operator-wait"
+  namespace: stackgres
+  labels:
+    app: stackgres-operator-init
+    job: wait
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "100"
+spec:
+  template:
+    metadata:
+      labels:
+        app: stackgres-operator-init
+        job: wait
+    spec:
+      serviceAccountName: stackgres-operator-init
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: "stackgres-operator-wait"
+        image: quay.io/ongres/kubectl:v1.25.9-build-6.22
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - "/bin/bash"
+          - "-ecx"
+          - |
+            kubectl set env -n 'stackgres' 'deployment/stackgres-operator' DISABLE_RECONCILIATION- RESET_CERTS-
+            kubectl set env -n 'stackgres' 'deployment/stackgres-restapi' RESET_CERTS-
+            kubectl rollout status -n 'stackgres' 'deployment/stackgres-operator'
+            kubectl rollout status -n 'stackgres' 'deployment/stackgres-restapi'

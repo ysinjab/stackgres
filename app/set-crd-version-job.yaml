@@ -1,0 +1,44 @@
+---
+# Source: stackgres-operator/templates/set-crd-version-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "stackgres-operator-set-crd-version"
+  namespace: stackgres
+  labels:
+    app: "stackgres-operator-set-crd-version"
+    scope: init
+    job: set-crd-version
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "60"
+spec:
+  template:
+    metadata:
+      labels:
+        app: "stackgres-operator-set-crd-version"
+        scope: init
+        job: set-crd-version
+    spec:
+      serviceAccountName: stackgres-operator-init
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: "set-crd-version"
+        image: quay.io/ongres/kubectl:v1.25.9-build-6.22
+        imagePullPolicy: "IfNotPresent"
+        command:
+          - "/bin/bash"
+          - "-ecx"
+          - |
+            kubectl get crd -o name | grep '\.stackgres\.io$' \
+              | while read -r CRD
+                do
+                  kubectl annotate --overwrite "$CRD" stackgres.io/operatorVersion=1.5.0
+                done

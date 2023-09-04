@@ -1,0 +1,93 @@
+---
+# Source: stackgres-operator/templates/operator-deployment.yaml
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  labels:
+    app: stackgres-operator
+    version: "1.5.0"
+    group:  stackgres.io
+  name: stackgres-operator
+  namespace: stackgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stackgres-operator
+      group:  stackgres.io
+  template:
+    metadata:
+      labels:
+        app: stackgres-operator
+        group:  stackgres.io
+    spec:
+      serviceAccountName: stackgres-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: stackgres-operator
+        image: "quay.io/stackgres/operator:1.5.0"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: RESET_CERTS
+            value: "true"
+          - name: DISABLE_RECONCILIATION
+            value: "true"
+          - name: OPERATOR_NAME
+            value: "stackgres-operator"
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: OPERATOR_IMAGE_VERSION
+            value: "1.5.0"
+          - name: PROMETHEUS_AUTOBIND
+            value: "true"
+          - name: OPERATOR_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: AUTHENTICATION_SECRET_NAME
+            value: "stackgres-restapi"
+          - name: SG_CONTAINER_REGISTRY
+            value: "quay.io"
+          - name: SG_IMAGE_PULL_POLICY
+            value: "IfNotPresent"
+          - name: EXTENSIONS_REPOSITORY_URLS
+            value: "https://extensions.stackgres.io/postgres/repository"
+        ports:
+        - containerPort: 8080
+          name: "http"
+          protocol: "TCP"
+        - containerPort: 8443
+          name: "https"
+          protocol: "TCP"
+        livenessProbe:
+          httpGet:
+            path: "/q/health/live"
+            port: 8080
+            scheme: "HTTP"
+          initialDelaySeconds: 10
+          periodSeconds: 60
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: "/q/health/ready"
+            port: 8080
+            scheme: "HTTP"
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 1
+        volumeMounts:
+          - name: operator-certs
+            mountPath: /etc/operator/certs
+            readOnly: true
+      volumes:
+        - name: operator-certs
+          secret:
+            secretName: stackgres-operator-certs
+            optional: false

@@ -1,0 +1,16 @@
+---
+# Source: stackgres-operator/templates/operator-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: stackgres
+  name: stackgres-operator
+spec:
+  type: ClusterIP
+  selector:
+    app: stackgres-operator
+  ports:
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https

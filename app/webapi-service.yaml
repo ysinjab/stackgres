@@ -1,0 +1,21 @@
+---
+# Source: stackgres-operator/templates/webapi-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: stackgres
+  name: stackgres-restapi
+  annotations:
+    meta.helm.sh/release-name: stackgres-operator
+    meta.helm.sh/release-namespace: stackgres
+  labels:
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: 'ClusterIP'
+  selector:
+    app: stackgres-restapi
+  ports:
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https

@@ -1,0 +1,45 @@
+---
+# Source: stackgres-operator/templates/crd-upgrade-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "stackgres-operator-crd-upgrade"
+  namespace: stackgres
+  labels:
+    app: stackgres-operator-init
+    job: upgrade-crd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-weight": "20"
+spec:
+  template:
+    metadata:
+      labels:
+        app: stackgres-operator-init
+        job: upgrade-crd
+    spec:
+      serviceAccountName: stackgres-operator-init
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: "crd-upgrade"
+        image: "quay.io/stackgres/jobs:1.5.0"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          - name: OPERATOR_NAME
+            value: "stackgres-operator"
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: CRD_UPGRADE
+            value: "true"
+          - name: CONVERSION_WEBHOOKS
+            value: "false"
